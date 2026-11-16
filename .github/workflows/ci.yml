@@ -1,64 +1,64 @@
-# The website: the content from the repositories' docs, the app built and tested, the published bundle.
+# Publishes the website. Its source is website/ of nuclearlang/nuclear; GitHub serves nuclearlang.github.io only from
+# this repository, so this workflow checks that one out, builds the site there and deploys the bundle.
+# It runs by hand (Actions → Run workflow, or `gh workflow run ci -R nuclearlang/nuclearlang.github.io`), every day,
+# and on a `repository_dispatch` of type `website` (sent by the tree's CI once it has a token for it).
 name: ci
 
 on:
   push:
     branches: [main]
-  pull_request:
+  schedule:
+    - cron: '17 5 * * *'
+  repository_dispatch:
+    types: [website]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
-  check:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           repository: nuclearlang/nuclear
-          path: nuclear
-      - uses: actions/checkout@v4
-        with:
-          path: website
-      - name: The other repositories of the working tree
-        run: |
-          git clone --depth 1 https://github.com/nuclearlang/dragonfly nuclear/dragonfly
-          git clone --depth 1 https://github.com/nuclearlang/dragonfly-mobile nuclear/dragonfly-mobile
-          git clone --depth 1 https://github.com/nuclearlang/dragonfly-backend nuclear/dragonfly-backend
-          git clone --depth 1 https://github.com/nuclearlang/dragonfly-web nuclear/dragonfly-web
-          git clone --depth 1 https://github.com/nuclearlang/nuclear-vscode nuclear/nuclear-vscode
+          ref: main
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
       - uses: actions/setup-node@v4
         with:
           node-version: 26
-      - name: Install nuclear and dragonfly
+      # The mobile onboarding is replayed (`nuclear new -p mobile` needs Flutter): the version of the tree's CI.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.8
+      - name: Install nuclear
         run: |
-          cd nuclear && tools/release/build-runtimes.sh && ./install.sh --no-vscode --no-zed --no-agent
+          installer/release/build-runtimes.sh && installer/install.sh --no-vscode --no-zed --no-agent
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: "Content, build, tests, bundle"
         working-directory: website
         run: |
-          export NUCLEAR_TREE="$GITHUB_WORKSPACE/nuclear"
           (cd tools && npm ci --no-audit --no-fund)
           node tools/content.mjs
-          dragonfly build
-          dragonfly install
-          dragonfly test
+          nuclear build
+          nuclear install
+          nuclear test
           (cd build/app && npx vite build)
       - name: The SPA fallback (an unknown address loads the app)
-        run: cp build/app/dist/index.html build/app/dist/404.html
         working-directory: website
+        run: cp build/app/dist/index.html build/app/dist/404.html
       - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main'
         with:
           path: website/build/app/dist
 
   deploy:
-    needs: check
-    if: github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       pages: write

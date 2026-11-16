@@ -1,3 +1,0 @@
-// A page or a list that could not be read.
-ContentError
-  message: string

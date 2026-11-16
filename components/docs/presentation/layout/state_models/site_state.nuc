@@ -1,3 +1,0 @@
-// The states of the site's frame (top bar, menu, footer).
-SiteState
-  (full: Site, error: ContentError, loading: boolean)

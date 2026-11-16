@@ -1,3 +1,0 @@
-// What the search box shows.
-SearchState
-  (results: SearchResult[], error: ContentError)
