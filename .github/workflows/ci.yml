@@ -1,4 +1,4 @@
-# Publishes the website. Its source is website/ of nuclearlang/nuclear; GitHub serves nuclearlang.github.io only from
+# Publishes the website. Its source is website/ of nuclearlang/lang; GitHub serves nuclearlang.github.io only from
 # this repository, so this workflow checks that one out, builds the site there and deploys the bundle.
 # It runs by hand (Actions → Run workflow, or `gh workflow run ci -R nuclearlang/nuclearlang.github.io`), every day,
 # and on a `repository_dispatch` of type `website` (sent by the tree's CI once it has a token for it).
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: nuclearlang/nuclear
+          repository: nuclearlang/lang
           ref: main
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v4
